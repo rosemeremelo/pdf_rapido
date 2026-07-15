@@ -1,0 +1,184 @@
+/* ============================================================
+   VARIÁVEIS DE TEMA & CONFIGURAÇÃO DO APARELHO
+   ============================================================ */
+:root {
+  --bg: #EEF0EC;
+  --surface: #FFFFFF;
+  --surface-2: #E4E7E1;
+  --ink: #14181C;
+  --muted: #5B6572;
+  --paper: #F7F5EF;
+  --paper-edge: #DAD6C9;
+  --accent: #1FA394;
+  --accent-strong: #157E72;
+  --accent-soft: #D8F0EC;
+  --danger: #D64545;
+  --ring: 31, 163, 148;
+}
+
+html.dark {
+  --bg: #10141A;
+  --surface: #1B2129;
+  --surface-2: #242C36;
+  --ink: #E7EAEE;
+  --muted: #8B96A5;
+  --paper: #F3F1E9;
+  --paper-edge: #C9C4B2;
+  --accent: #37C9BA;
+  --accent-strong: #59DACC;
+  --accent-soft: rgba(55, 201, 186, 0.14);
+  --danger: #F0696E;
+  --ring: 55, 201, 186;
+}
+
+/* ============================================================
+   ESTILIZAÇÃO GERAL DO DOCUMENTO
+   ============================================================ */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* utilitários de cor dinâmicos */
+.surface { background: var(--surface); }
+.surface-2 { background: var(--surface-2); }
+.text-muted { color: var(--muted); }
+.text-ink { color: var(--ink); }
+.bg-app { background: var(--bg); }
+.border-hair { border-color: var(--surface-2); }
+
+/* ============================================================
+   COMPONENTES E ELEMENTOS INTERATIVOS
+   ============================================================ */
+.btn-accent {
+  background: var(--accent);
+  color: #04211D;
+  font-weight: 600;
+}
+
+html.dark .btn-accent {
+  color: #04231F;
+}
+
+.btn-accent:active {
+  background: var(--accent-strong);
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Estilo do Input de Seleção Circular */
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+/* Scrollbars customizadas */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
+.page-count-badge {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+html.dark .page-count-badge {
+  color: var(--accent);
+}
+
+/* ============================================================
+   ANIMAÇÃO E SINALIZAÇÃO VISUAL (SCANNER EFFECTS)
+   ============================================================ */
+.scan-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent) 20%, var(--accent) 80%, transparent);
+  box-shadow: 0 0 12px 1px var(--accent);
+  top: -10%;
+  animation: scanSweep 2.6s cubic-bezier(.65, 0, .35, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes scanSweep {
+  0% { top: -6%; opacity: 0; }
+  8% { opacity: 1; }
+  50% { top: 100%; opacity: 1; }
+  58% { opacity: 0; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.scan-line-once {
+  animation: scanSweepOnce 0.9s ease-out 1;
+}
+
+@keyframes scanSweepOnce {
+  0% { top: -6%; opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.doc-icon-page {
+  fill: var(--paper);
+  stroke: var(--paper-edge);
+}
+
+/* Animação para entrada suave dos cards na grade */
+.card-enter {
+  animation: cardEnter 0.35s ease both;
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Drag-and-drop feedback */
+.drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+}
+
+.dragging {
+  opacity: 0.4;
+}
+
+/* Respeito às preferências de movimentação reduzida do sistema */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

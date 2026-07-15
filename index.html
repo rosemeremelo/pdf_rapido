@@ -1,616 +1,175 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Fotos em PDF — conversor local</title>
-<meta name="description" content="Converta fotos em PDF sem enviar nada para nenhum servidor. Tudo roda no seu aparelho.">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Fotos em PDF — conversor local</title>
+  <meta name="description" content="Converta fotos em PDF sem enviar nada para nenhum servidor. Tudo roda no seu aparelho.">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Fontes do Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght=500;600;700&family=Inter:wght=400;500;600;700&family=JetBrains+Mono:wght=400;500&display=swap" rel="stylesheet">
 
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Dependências Externas (Tailwind CSS & jsPDF) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<style>
-  :root{
-    --bg:#EEF0EC;
-    --surface:#FFFFFF;
-    --surface-2:#E4E7E1;
-    --ink:#14181C;
-    --muted:#5B6572;
-    --paper:#F7F5EF;
-    --paper-edge:#DAD6C9;
-    --accent:#1FA394;
-    --accent-strong:#157E72;
-    --accent-soft:#D8F0EC;
-    --danger:#D64545;
-    --ring: 31,163,148;
-  }
-  html.dark{
-    --bg:#10141A;
-    --surface:#1B2129;
-    --surface-2:#242C36;
-    --ink:#E7EAEE;
-    --muted:#8B96A5;
-    --paper:#F3F1E9;
-    --paper-edge:#C9C4B2;
-    --accent:#37C9BA;
-    --accent-strong:#59DACC;
-    --accent-soft:rgba(55,201,186,0.14);
-    --danger:#F0696E;
-    --ring: 55,201,186;
-  }
-
-  * { -webkit-tap-highlight-color: transparent; }
-  html,body{ background:var(--bg); color:var(--ink); }
-  body{ font-family:'Inter',sans-serif; transition:background-color .25s ease,color .25s ease; }
-  .font-display{ font-family:'Space Grotesk',sans-serif; }
-  .font-mono{ font-family:'JetBrains Mono',monospace; }
-
-  .surface{ background:var(--surface); }
-  .surface-2{ background:var(--surface-2); }
-  .text-muted{ color:var(--muted); }
-  .text-ink{ color:var(--ink); }
-  .bg-app{ background:var(--bg); }
-  .border-hair{ border-color:var(--surface-2); }
-
-  .btn-accent{
-    background:var(--accent); color:#04211D; font-weight:600;
-  }
-  html.dark .btn-accent{ color:#04231F; }
-  .btn-accent:active{ background:var(--accent-strong); }
-
-  .focus-ring:focus-visible{
-    outline:2px solid var(--accent);
-    outline-offset:2px;
-  }
-
-  @media (prefers-reduced-motion: reduce){
-    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
-  }
-
-  /* ---- Signature element: scan line ---- */
-  .scan-frame{
-    position:relative;
-    overflow:hidden;
-  }
-  .scan-line{
-    position:absolute;
-    left:0; right:0;
-    height:2px;
-    background:linear-gradient(90deg, transparent, var(--accent) 20%, var(--accent) 80%, transparent);
-    box-shadow:0 0 12px 1px var(--accent);
-    top:-10%;
-    animation:scanSweep 2.6s cubic-bezier(.65,0,.35,1) infinite;
-    pointer-events:none;
-  }
-  @keyframes scanSweep{
-    0%{ top:-6%; opacity:0; }
-    8%{ opacity:1; }
-    50%{ top:100%; opacity:1; }
-    58%{ opacity:0; }
-    100%{ top:100%; opacity:0; }
-  }
-  .scan-line-once{
-    animation:scanSweepOnce 0.9s ease-out 1;
-  }
-  @keyframes scanSweepOnce{
-    0%{ top:-6%; opacity:1; }
-    100%{ top:100%; opacity:0; }
-  }
-
-  .doc-icon-page{
-    fill:var(--paper);
-    stroke:var(--paper-edge);
-  }
-
-  /* Thumbnail card enter animation */
-  .card-enter{ animation:cardEnter .35s ease both; }
-  @keyframes cardEnter{
-    from{ opacity:0; transform:translateY(6px) scale(.97); }
-    to{ opacity:1; transform:translateY(0) scale(1); }
-  }
-
-  .drag-over{ outline:2px dashed var(--accent); outline-offset:-4px; }
-  .dragging{ opacity:.4; }
-
-  input[type="radio"]{ accent-color: var(--accent); }
-
-  ::-webkit-scrollbar{ width:8px; height:8px; }
-  ::-webkit-scrollbar-thumb{ background:var(--surface-2); border-radius:8px; }
-
-  .page-count-badge{
-    background:var(--accent-soft); color:var(--accent-strong); font-family:'JetBrains Mono',monospace;
-  }
-  html.dark .page-count-badge{ color:var(--accent); }
-</style>
+  <!-- CSS Customizado -->
+  <link rel="stylesheet" href="style.css">
 </head>
 <body class="min-h-screen flex flex-col bg-app">
 
-<!-- ===================== HEADER ===================== -->
-<header class="sticky top-0 z-30 surface border-b border-hair">
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-    <div class="flex items-center gap-2.5">
-      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="2" width="18" height="22" rx="2" class="doc-icon-page" stroke-width="1.4"/>
-        <line x1="7.5" y1="8" x2="18.5" y2="8" stroke="var(--muted)" stroke-width="1.1"/>
-        <line x1="7.5" y1="12" x2="18.5" y2="12" stroke="var(--muted)" stroke-width="1.1"/>
-        <line x1="7.5" y1="16" x2="14" y2="16" stroke="var(--muted)" stroke-width="1.1"/>
-        <rect x="3" y="9.4" width="20" height="1.6" rx="0.8" fill="var(--accent)"/>
-      </svg>
-      <span class="font-display font-semibold text-[17px] tracking-tight">Fotos em PDF</span>
-    </div>
-    <button id="theme-toggle" type="button" aria-label="Alternar modo claro/escuro"
-      class="w-10 h-10 rounded-full surface-2 flex items-center justify-center focus-ring">
-      <svg id="icon-sun" class="w-[18px] h-[18px] hidden" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/></svg>
-      <svg id="icon-moon" class="w-[18px] h-[18px] hidden" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>
-    </button>
-  </div>
-</header>
-
-<main class="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-32">
-
-  <!-- ===================== EMPTY STATE / HERO ===================== -->
-  <section id="empty-state">
-    <div class="scan-frame surface rounded-2xl border border-hair px-6 py-10 sm:py-14 flex flex-col items-center text-center">
-      <div class="scan-line" aria-hidden="true"></div>
-
-      <svg width="72" height="90" viewBox="0 0 72 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-6">
-        <rect x="3" y="3" width="66" height="84" rx="5" class="doc-icon-page" stroke-width="2"/>
-        <line x1="14" y1="24" x2="58" y2="24" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"/>
-        <line x1="14" y1="34" x2="58" y2="34" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"/>
-        <line x1="14" y1="44" x2="46" y2="44" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"/>
-        <line x1="14" y1="60" x2="58" y2="60" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-        <line x1="14" y1="70" x2="40" y2="70" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-      </svg>
-
-      <h1 class="font-display font-semibold text-2xl sm:text-3xl tracking-tight max-w-sm">
-        Transforme fotos em um PDF, direto no seu aparelho
-      </h1>
-      <p class="text-muted mt-2.5 max-w-xs text-[15px]">
-        Escolha imagens da sua galeria, organize a ordem e gere o documento em segundos.
-      </p>
-
-      <label for="file-input"
-        class="focus-ring mt-8 btn-accent rounded-xl px-7 py-4 text-[16px] cursor-pointer active:scale-[0.98] transition-transform shadow-sm inline-flex items-center gap-2">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
-        Selecionar fotos da galeria
-      </label>
-      <input id="file-input" type="file" accept="image/*" multiple class="sr-only">
-    </div>
-
-    <!-- Privacy note -->
-    <div class="mt-4 flex items-start gap-3 surface-2 rounded-xl px-4 py-3.5">
-      <svg class="shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-      <p class="text-[13.5px] text-muted leading-snug">
-        <span class="text-ink font-medium">Suas fotos não são enviadas para nenhum servidor.</span>
-        Tudo é processado com segurança no seu próprio aparelho — nada é salvo, cadastrado ou compartilhado.
-      </p>
-    </div>
-  </section>
-
-  <!-- ===================== WORKSPACE (hidden until photos exist) ===================== -->
-  <section id="workspace" class="hidden">
-
-    <div class="flex items-center justify-between mb-3.5">
-      <h2 class="font-display font-semibold text-lg">Suas fotos</h2>
-      <div class="flex items-center gap-2">
-        <span id="photo-count" class="page-count-badge text-xs px-2.5 py-1 rounded-full">0 páginas</span>
-        <label for="file-input-add" class="focus-ring text-xs font-medium px-3 py-1.5 rounded-full surface-2 text-ink cursor-pointer hover:opacity-80">
-          + Adicionar
-        </label>
-        <input id="file-input-add" type="file" accept="image/*" multiple class="sr-only">
+  <!-- ===================== HEADER ===================== -->
+  <header class="sticky top-0 z-30 surface border-b border-hair">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="2" width="18" height="22" rx="2" class="doc-icon-page" stroke-width="1.4"/>
+          <line x1="7.5" y1="8" x2="18.5" y2="8" stroke="var(--muted)" stroke-width="1.1"/>
+          <line x1="7.5" y1="12" x2="18.5" y2="12" stroke="var(--muted)" stroke-width="1.1"/>
+          <line x1="7.5" y1="16" x2="14" y2="16" stroke="var(--muted)" stroke-width="1.1"/>
+          <rect x="3" y="9.4" width="20" height="1.6" rx="0.8" fill="var(--accent)"/>
+        </svg>
+        <span class="font-display font-semibold text-[17px] tracking-tight">Fotos em PDF</span>
       </div>
+      <button id="theme-toggle" type="button" aria-label="Alternar modo claro/escuro"
+        class="w-10 h-10 rounded-full surface-2 flex items-center justify-center focus-ring">
+        <svg id="icon-sun" class="w-[18px] h-[18px] hidden" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/></svg>
+        <svg id="icon-moon" class="w-[18px] h-[18px] hidden" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>
+      </button>
     </div>
-    <p class="text-xs text-muted -mt-2 mb-4">Segure e arraste para reordenar no computador, ou use as setas no celular.</p>
+  </header>
 
-    <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+  <main class="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-32">
 
-    <!-- ===================== PDF SETTINGS ===================== -->
-    <div class="mt-8 surface rounded-2xl border border-hair p-5 sm:p-6">
-      <h2 class="font-display font-semibold text-lg mb-5">Configurações do PDF</h2>
+    <!-- ===================== EMPTY STATE / HERO ===================== -->
+    <section id="empty-state">
+      <div class="scan-frame surface rounded-2xl border border-hair px-6 py-10 sm:py-14 flex flex-col items-center text-center">
+        <div class="scan-line" aria-hidden="true"></div>
 
-      <div class="mb-5">
-        <label for="filename" class="block text-xs font-medium text-muted mb-1.5 font-mono uppercase tracking-wide">Nome do arquivo</label>
-        <div class="flex items-center surface-2 rounded-lg overflow-hidden focus-within:ring-2" style="--tw-ring-color: var(--accent);">
-          <input id="filename" type="text" value="documento" maxlength="80"
-            class="flex-1 bg-transparent px-3.5 py-3 text-[15px] outline-none font-mono">
-          <span class="pr-3.5 text-muted text-[15px] font-mono">.pdf</span>
+        <svg width="72" height="90" viewBox="0 0 72 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-6">
+          <rect x="3" y="3" width="66" height="84" rx="5" class="doc-icon-page" stroke-width="2"/>
+          <line x1="14" y1="24" x2="58" y2="24" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="34" x2="58" y2="34" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="44" x2="46" y2="44" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="60" x2="58" y2="60" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+          <line x1="14" y1="70" x2="40" y2="70" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+        </svg>
+
+        <h1 class="font-display font-semibold text-2xl sm:text-3xl tracking-tight max-w-sm">
+          Transforme fotos em um PDF, direto no seu aparelho
+        </h1>
+        <p class="text-muted mt-2.5 max-w-xs text-[15px]">
+          Escolha imagens da sua galeria, organize a ordem e gere o documento em segundos.
+        </p>
+
+        <label for="file-input"
+          class="focus-ring mt-8 btn-accent rounded-xl px-7 py-4 text-[16px] cursor-pointer active:scale-[0.98] transition-transform shadow-sm inline-flex items-center gap-2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+          Selecionar fotos da galeria
+        </label>
+        <input id="file-input" type="file" accept="image/*" multiple class="sr-only">
+      </div>
+
+      <!-- Privacy note -->
+      <div class="mt-4 flex items-start gap-3 surface-2 rounded-xl px-4 py-3.5">
+        <svg class="shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <p class="text-[13.5px] text-muted leading-snug">
+          <span class="text-ink font-medium">Suas fotos não são enviadas para nenhum servidor.</span>
+          Tudo é processado com segurança no seu próprio aparelho — nada é salvo, cadastrado ou compartilhado.
+        </p>
+      </div>
+    </section>
+
+    <!-- ===================== WORKSPACE (hidden until photos exist) ===================== -->
+    <section id="workspace" class="hidden">
+
+      <div class="flex items-center justify-between mb-3.5">
+        <h2 class="font-display font-semibold text-lg">Suas fotos</h2>
+        <div class="flex items-center gap-2">
+          <span id="photo-count" class="page-count-badge text-xs px-2.5 py-1 rounded-full">0 páginas</span>
+          <label for="file-input-add" class="focus-ring text-xs font-medium px-3 py-1.5 rounded-full surface-2 text-ink cursor-pointer hover:opacity-80">
+            + Adicionar
+          </label>
+          <input id="file-input-add" type="file" accept="image/*" multiple class="sr-only">
         </div>
       </div>
+      <p class="text-xs text-muted -mt-2 mb-4">Segure e arraste para reordenar no computador, ou use as setas no celular.</p>
 
-      <div class="grid sm:grid-cols-2 gap-5">
-        <fieldset>
-          <legend class="block text-xs font-medium text-muted mb-2 font-mono uppercase tracking-wide">Tamanho da página</legend>
-          <div class="space-y-2">
-            <label class="flex items-center gap-2.5 surface-2 rounded-lg px-3.5 py-3 cursor-pointer">
-              <input type="radio" name="pageSize" value="a4" checked class="w-4 h-4">
-              <span class="text-[14.5px]">A4 <span class="text-muted">(padrão)</span></span>
-            </label>
-            <label class="flex items-center gap-2.5 surface-2 rounded-lg px-3.5 py-3 cursor-pointer">
-              <input type="radio" name="pageSize" value="original" class="w-4 h-4">
-              <span class="text-[14.5px]">Tamanho original da imagem</span>
-            </label>
+      <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+
+      <!-- ===================== PDF SETTINGS ===================== -->
+      <div class="mt-8 surface rounded-2xl border border-hair p-5 sm:p-6">
+        <h2 class="font-display font-semibold text-lg mb-5">Configurações do PDF</h2>
+
+        <div class="mb-5">
+          <label for="filename" class="block text-xs font-medium text-muted mb-1.5 font-mono uppercase tracking-wide">Nome do arquivo</label>
+          <div class="flex items-center surface-2 rounded-lg overflow-hidden focus-within:ring-2" style="--tw-ring-color: var(--accent);">
+            <input id="filename" type="text" value="documento" maxlength="80"
+              class="flex-1 bg-transparent px-3.5 py-3 text-[15px] outline-none font-mono">
+            <span class="pr-3.5 text-muted text-[15px] font-mono">.pdf</span>
           </div>
-        </fieldset>
+        </div>
 
-        <fieldset>
-          <legend class="block text-xs font-medium text-muted mb-2 font-mono uppercase tracking-wide">Margem</legend>
-          <div class="space-y-2">
-            <label class="flex items-center gap-2.5 surface-2 rounded-lg px-3.5 py-3 cursor-pointer">
-              <input type="radio" name="margin" value="none" checked class="w-4 h-4">
-              <span class="text-[14.5px]">Sem margem <span class="text-muted">(ideal p/ escaneamento)</span></span>
-            </label>
-            <label class="flex items-center gap-2.5 surface-2 rounded-lg px-3.5 py-3 cursor-pointer">
-              <input type="radio" name="margin" value="fine" class="w-4 h-4">
-              <span class="text-[14.5px]">Margem fina</span>
-            </label>
-          </div>
-        </fieldset>
+        <div class="grid sm:grid-cols-2 gap-5">
+          <fieldset>
+            <legend class="block text-xs font-medium text-muted mb-2 font-mono uppercase tracking-wide">Tamanho da página</legend>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2.5 surface-2 rounded-lg px-3.5 py-3 cursor-pointer">
+                <input type="radio" name="pageSize" value="a4" checked class="w-4 h-4">
+                <span class="text-[14.5px]">A4 <span class="text-muted">(padrão)</span></span>
+              </label>
+              <label class="flex items-center gap-2.5 surface-2 rounded-lg px-3.5 py-3 cursor-pointer">
+                <input type="radio" name="pageSize" value="original" class="w-4 h-4">
+                <span class="text-[14.5px]">Tamanho original da imagem</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend class="block text-xs font-medium text-muted mb-2 font-mono uppercase tracking-wide">Margem</legend>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2.5 surface-2 rounded-lg px-3.5 py-3 cursor-pointer">
+                <input type="radio" name="margin" value="none" checked class="w-4 h-4">
+                <span class="text-[14.5px]">Sem margem <span class="text-muted">(ideal p/ escaneamento)</span></span>
+              </label>
+              <label class="flex items-center gap-2.5 surface-2 rounded-lg px-3.5 py-3 cursor-pointer">
+                <input type="radio" name="margin" value="fine" class="w-4 h-4">
+                <span class="text-[14.5px]">Margem fina</span>
+              </label>
+            </div>
+          </fieldset>
+        </div>
       </div>
-    </div>
-  </section>
-</main>
+    </section>
+  </main>
 
-<!-- ===================== STICKY FOOTER ACTION ===================== -->
-<footer id="footer-bar" class="hidden fixed bottom-0 left-0 right-0 z-30 surface border-t border-hair pb-[max(env(safe-area-inset-bottom),0px)]">
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 py-3.5">
-    <button id="generate-btn" type="button"
-      class="focus-ring w-full btn-accent rounded-xl py-4 text-[16px] flex items-center justify-center gap-2.5 active:scale-[0.98] transition-transform disabled:opacity-50">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-      <span id="generate-label">Gerar e baixar PDF</span>
-    </button>
-  </div>
-</footer>
-
-<!-- ===================== LOADING OVERLAY ===================== -->
-<div id="loading-overlay" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-6">
-  <div class="surface rounded-2xl px-8 py-9 flex flex-col items-center max-w-xs w-full">
-    <div class="scan-frame w-16 h-20 rounded-md mb-5" style="background:var(--paper); border:1.5px solid var(--paper-edge);">
-      <div class="scan-line" aria-hidden="true"></div>
-    </div>
-    <p class="font-display font-semibold text-[15px] mb-1">Gerando seu PDF…</p>
-    <p id="loading-detail" class="text-xs text-muted font-mono">preparando páginas</p>
-  </div>
-</div>
-
-<!-- Live region for a11y status updates -->
-<div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
-
-<script>
-(function(){
-  'use strict';
-
-  /* ============================================================
-     ESTADO DA APLICAÇÃO
-     Cada foto vira um objeto: { id, dataUrl, width, height }
-     dataUrl já é a versão comprimida/redimensionada (JPEG),
-     pronta para ser inserida no PDF sem travar o navegador.
-  ============================================================ */
-  let photos = [];
-  let idCounter = 0;
-  let dragSrcIndex = null;
-
-  const els = {
-    fileInput: document.getElementById('file-input'),
-    fileInputAdd: document.getElementById('file-input-add'),
-    emptyState: document.getElementById('empty-state'),
-    workspace: document.getElementById('workspace'),
-    grid: document.getElementById('grid'),
-    photoCount: document.getElementById('photo-count'),
-    filename: document.getElementById('filename'),
-    footerBar: document.getElementById('footer-bar'),
-    generateBtn: document.getElementById('generate-btn'),
-    generateLabel: document.getElementById('generate-label'),
-    loadingOverlay: document.getElementById('loading-overlay'),
-    loadingDetail: document.getElementById('loading-detail'),
-    srStatus: document.getElementById('sr-status'),
-    themeToggle: document.getElementById('theme-toggle'),
-  };
-
-  /* ============================================================
-     TEMA CLARO / ESCURO
-     Respeita a preferência do sistema na primeira visita e
-     lembra a escolha do usuário durante a sessão.
-  ============================================================ */
-  function applyTheme(isDark){
-    document.documentElement.classList.toggle('dark', isDark);
-    document.getElementById('icon-sun').classList.toggle('hidden', !isDark);
-    document.getElementById('icon-moon').classList.toggle('hidden', isDark);
-  }
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  applyTheme(prefersDark);
-  els.themeToggle.addEventListener('click', () => {
-    applyTheme(!document.documentElement.classList.contains('dark'));
-  });
-
-  /* ============================================================
-     PROCESSAMENTO DE IMAGEM (redimensionar + comprimir)
-     Fotos de celular podem chegar a 12MP+. Reduzimos para no
-     máximo 2000px no lado maior e recomprimimos em JPEG, o que
-     evita travamentos ao montar o PDF, sem perda visível de
-     qualidade para leitura/impressão.
-  ============================================================ */
-  const MAX_DIMENSION = 2000;
-  const JPEG_QUALITY = 0.82;
-
-  async function processImageFile(file){
-    let bitmap;
-    try {
-      // createImageBitmap com 'from-image' já corrige a rotação EXIF
-      // (comum em fotos tiradas na vertical pelo celular).
-      bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-    } catch (err) {
-      bitmap = await loadImageFallback(file);
-    }
-
-    const { width, height } = bitmap;
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
-    const targetW = Math.max(1, Math.round(width * scale));
-    const targetH = Math.max(1, Math.round(height * scale));
-
-    const canvas = document.createElement('canvas');
-    canvas.width = targetW;
-    canvas.height = targetH;
-    const ctx = canvas.getContext('2d');
-    // Fundo branco: fotos com transparência (PNG) não viram pretas no PDF.
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, targetW, targetH);
-    ctx.drawImage(bitmap, 0, 0, targetW, targetH);
-
-    if (bitmap.close) bitmap.close();
-
-    return {
-      dataUrl: canvas.toDataURL('image/jpeg', JPEG_QUALITY),
-      width: targetW,
-      height: targetH,
-    };
-  }
-
-  // Fallback para navegadores sem suporte a createImageBitmap.
-  function loadImageFallback(file){
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = reader.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  /* ============================================================
-     ENTRADA DE ARQUIVOS
-  ============================================================ */
-  async function handleFiles(fileList){
-    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
-    if (!files.length) return;
-
-    const startIndex = photos.length;
-
-    for (const file of files) {
-      try {
-        const processed = await processImageFile(file);
-        photos.push({ id: ++idCounter, ...processed });
-      } catch (err) {
-        console.error('Falha ao processar imagem:', file.name, err);
-      }
-    }
-
-    render();
-    // Anima só os cartões recém-adicionados.
-    highlightNewCards(startIndex);
-    announce(`${files.length} foto${files.length > 1 ? 's' : ''} adicionada${files.length > 1 ? 's' : ''}.`);
-  }
-
-  els.fileInput.addEventListener('change', (e) => {
-    handleFiles(e.target.files);
-    e.target.value = '';
-  });
-  els.fileInputAdd.addEventListener('change', (e) => {
-    handleFiles(e.target.files);
-    e.target.value = '';
-  });
-
-  /* ============================================================
-     GRADE DE MINIATURAS (renderização + reordenação)
-  ============================================================ */
-  function render(){
-    const hasPhotos = photos.length > 0;
-    els.emptyState.classList.toggle('hidden', hasPhotos);
-    els.workspace.classList.toggle('hidden', !hasPhotos);
-    els.footerBar.classList.toggle('hidden', !hasPhotos);
-    els.photoCount.textContent = `${photos.length} página${photos.length === 1 ? '' : 's'}`;
-
-    els.grid.innerHTML = '';
-    photos.forEach((photo, index) => {
-      els.grid.appendChild(buildCard(photo, index));
-    });
-  }
-
-  function buildCard(photo, index){
-    const card = document.createElement('div');
-    card.className = 'group relative surface-2 rounded-xl overflow-hidden border border-hair';
-    card.draggable = true;
-    card.dataset.id = photo.id;
-
-    card.innerHTML = `
-      <div class="aspect-[3/4] w-full overflow-hidden" style="background:var(--paper)">
-        <img src="${photo.dataUrl}" alt="Foto ${index + 1}" class="w-full h-full object-cover pointer-events-none select-none" draggable="false">
-      </div>
-      <span class="absolute top-1.5 left-1.5 font-mono text-[11px] px-1.5 py-0.5 rounded-md bg-black/55 text-white">${index + 1}</span>
-      <button type="button" data-action="remove" aria-label="Remover foto ${index + 1}"
-        class="focus-ring absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/55 hover:bg-[var(--danger)] flex items-center justify-center transition-colors">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg>
+  <!-- ===================== STICKY FOOTER ACTION ===================== -->
+  <footer id="footer-bar" class="hidden fixed bottom-0 left-0 right-0 z-30 surface border-t border-hair pb-[max(env(safe-area-inset-bottom),0px)]">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-3.5">
+      <button id="generate-btn" type="button"
+        class="focus-ring w-full btn-accent rounded-xl py-4 text-[16px] flex items-center justify-center gap-2.5 active:scale-[0.98] transition-transform disabled:opacity-50">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        <span id="generate-label">Gerar e baixar PDF</span>
       </button>
-      <div class="absolute bottom-0 inset-x-0 flex justify-between px-1.5 py-1.5 bg-gradient-to-t from-black/60 to-transparent">
-        <button type="button" data-action="left" aria-label="Mover foto ${index + 1} para a esquerda" ${index === 0 ? 'disabled' : ''}
-          class="focus-ring w-7 h-7 rounded-full bg-black/55 flex items-center justify-center disabled:opacity-30">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <button type="button" data-action="right" aria-label="Mover foto ${index + 1} para a direita" ${index === photos.length - 1 ? 'disabled' : ''}
-          class="focus-ring w-7 h-7 rounded-full bg-black/55 flex items-center justify-center disabled:opacity-30">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
+    </div>
+  </footer>
+
+  <!-- ===================== LOADING OVERLAY ===================== -->
+  <div id="loading-overlay" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-6">
+    <div class="surface rounded-2xl px-8 py-9 flex flex-col items-center max-w-xs w-full">
+      <div class="scan-frame w-16 h-20 rounded-md mb-5" style="background:var(--paper); border:1.5px solid var(--paper-edge);">
+        <div class="scan-line" aria-hidden="true"></div>
       </div>
-    `;
+      <p class="font-display font-semibold text-[15px] mb-1">Gerando seu PDF…</p>
+      <p id="loading-detail" class="text-xs text-muted font-mono">preparando páginas</p>
+    </div>
+  </div>
 
-    card.querySelector('[data-action="remove"]').addEventListener('click', () => removePhoto(index));
-    card.querySelector('[data-action="left"]').addEventListener('click', () => movePhoto(index, index - 1));
-    card.querySelector('[data-action="right"]').addEventListener('click', () => movePhoto(index, index + 1));
+  <!-- Acessibilidade: Região de status dinâmico -->
+  <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
 
-    // Drag-and-drop (desktop)
-    card.addEventListener('dragstart', () => {
-      dragSrcIndex = index;
-      card.classList.add('dragging');
-    });
-    card.addEventListener('dragend', () => card.classList.remove('dragging'));
-    card.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      card.classList.add('drag-over');
-    });
-    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
-    card.addEventListener('drop', (e) => {
-      e.preventDefault();
-      card.classList.remove('drag-over');
-      if (dragSrcIndex === null || dragSrcIndex === index) return;
-      movePhoto(dragSrcIndex, index);
-      dragSrcIndex = null;
-    });
-
-    return card;
-  }
-
-  function highlightNewCards(fromIndex){
-    const cards = els.grid.children;
-    for (let i = fromIndex; i < cards.length; i++) {
-      cards[i].classList.add('card-enter');
-    }
-  }
-
-  function removePhoto(index){
-    photos.splice(index, 1);
-    render();
-  }
-
-  function movePhoto(from, to){
-    if (to < 0 || to >= photos.length) return;
-    const [moved] = photos.splice(from, 1);
-    photos.splice(to, 0, moved);
-    render();
-  }
-
-  function announce(msg){
-    els.srStatus.textContent = msg;
-  }
-
-  /* ============================================================
-     GERAÇÃO DO PDF
-     Usa jsPDF com unidade 'px'. Cada foto vira uma página:
-       - "A4": página com proporção A4 fixa (calculada em px a
-         96dpi), imagem centralizada dentro da área útil.
-       - "Tamanho original": a página assume as dimensões exatas
-         da imagem processada.
-     A margem, quando ativada, reduz a área útil de desenho.
-  ============================================================ */
-  const A4_PX = { w: 793.7, h: 1122.5 }; // 210x297mm a 96dpi
-
-  function getSelectedValue(name){
-    const el = document.querySelector(`input[name="${name}"]:checked`);
-    return el ? el.value : null;
-  }
-
-  function computeMargin(pageW, pageH, marginMode){
-    if (marginMode === 'none') return 0;
-    return Math.round(Math.min(pageW, pageH) * 0.035); // margem fina proporcional
-  }
-
-  async function generatePdf(){
-    if (!photos.length) return;
-
-    const pageSizeMode = getSelectedValue('pageSize'); // 'a4' | 'original'
-    const marginMode = getSelectedValue('margin');       // 'none' | 'fine'
-    const rawName = els.filename.value.trim() || 'documento';
-    const finalName = rawName.replace(/\.pdf$/i, '') + '.pdf';
-
-    setLoading(true, 'preparando páginas');
-    // Pequeno atraso para o navegador pintar o spinner antes do
-    // trabalho síncrono pesado de montagem do PDF começar.
-    await nextFrame();
-
-    try {
-      const { jsPDF } = window.jspdf;
-      let pdf = null;
-
-      for (let i = 0; i < photos.length; i++) {
-        const photo = photos[i];
-        setLoading(true, `página ${i + 1} de ${photos.length}`);
-
-        const pageW = pageSizeMode === 'a4' ? A4_PX.w : photo.width;
-        const pageH = pageSizeMode === 'a4' ? A4_PX.h : photo.height;
-        const format = [pageW, pageH];
-
-        if (!pdf) {
-          pdf = new jsPDF({ unit: 'px', format, orientation: pageW > pageH ? 'landscape' : 'portrait', hotfixes: ['px_scaling'] });
-        } else {
-          pdf.addPage(format, pageW > pageH ? 'landscape' : 'portrait');
-        }
-
-        const margin = computeMargin(pageW, pageH, marginMode);
-        const usableW = Math.max(1, pageW - margin * 2);
-        const usableH = Math.max(1, pageH - margin * 2);
-
-        // Encaixa a imagem mantendo proporção, centralizada na área útil.
-        const imgRatio = photo.width / photo.height;
-        const boxRatio = usableW / usableH;
-        let drawW, drawH;
-        if (imgRatio > boxRatio) {
-          drawW = usableW;
-          drawH = usableW / imgRatio;
-        } else {
-          drawH = usableH;
-          drawW = usableH * imgRatio;
-        }
-        const x = margin + (usableW - drawW) / 2;
-        const y = margin + (usableH - drawH) / 2;
-
-        pdf.addImage(photo.dataUrl, 'JPEG', x, y, drawW, drawH, undefined, 'MEDIUM');
-
-        // Deixa a UI respirar entre páginas (evita travar em celulares
-        // mais fracos com muitas fotos de alta resolução).
-        if (i % 2 === 1) await nextFrame();
-      }
-
-      setLoading(true, 'finalizando arquivo');
-      await nextFrame();
-      pdf.save(finalName);
-      announce('PDF gerado e baixado com sucesso.');
-    } catch (err) {
-      console.error('Erro ao gerar PDF:', err);
-      announce('Não foi possível gerar o PDF. Tente novamente.');
-      alert('Não foi possível gerar o PDF. Tente novamente com menos fotos ou fotos menores.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function nextFrame(){
-    return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
-  }
-
-  function setLoading(isLoading, detail){
-    els.loadingOverlay.classList.toggle('hidden', !isLoading);
-    els.generateBtn.disabled = isLoading;
-    if (detail) els.loadingDetail.textContent = detail;
-  }
-
-  els.generateBtn.addEventListener('click', generatePdf);
-
-})();
-</script>
+  <!-- Script principal da aplicação -->
+  <script src="app.js"></script>
 </body>
 </html>
