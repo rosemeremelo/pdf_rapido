@@ -1,16 +1,14 @@
+
 (function () {
   'use strict';
 
   /* ============================================================
      ESTADO DA APLICAÇÃO
-     Cada foto vira um objeto: { id, dataUrl, width, height }
-     O dataUrl é gerado localmente em formato comprimido (JPEG).
      ============================================================ */
   let photos = [];
   let idCounter = 0;
   let dragSrcIndex = null;
 
-  // Seletores do DOM encapsulados
   const els = {
     fileInput: document.getElementById('file-input'),
     fileInputAdd: document.getElementById('file-input-add'),
@@ -29,9 +27,7 @@
   };
 
   /* ============================================================
-     TEMA CLARO / ESCURO (Modo Dark)
-     Respeita a preferência do sistema operacional por padrão e
-     permite alternar dinamicamente na tela do app.
+     TEMA CLARO / ESCURO
      ============================================================ */
   function applyTheme(isDark) {
     document.documentElement.classList.toggle('dark', isDark);
@@ -47,22 +43,28 @@
   });
 
   /* ============================================================
-     COMPRESSÃO E DIMENSIONAMENTO DE IMAGENS
-     Tratamento de fotos pesadas do celular (geralmente de 12MP+).
-     Limita o lado maior em 2000px e comprime em JPEG (qualidade 0.82),
-     garantindo velocidade e eficiência sem estourar a RAM do aparelho.
+     COMPRESSÃO E DIMENSIONAMENTO ROBUSTO DE IMAGENS (MOBILE-SAFE)
      ============================================================ */
   const MAX_DIMENSION = 2000;
   const JPEG_QUALITY = 0.82;
 
   async function processImageFile(file) {
     let bitmap;
+    
     try {
-      // O 'createImageBitmap' nativo corrige e rotaciona automaticamente 
-      // baseando-se no metadado EXIF (comum em orientações verticais de câmera).
-      bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      // Tenta decodificar E redimensionar diretamente no hardware (previne estouro de RAM no S25 Ultra)
+      bitmap = await createImageBitmap(file, {
+        imageOrientation: 'from-image',
+        resizeWidth: MAX_DIMENSION,
+        resizeQuality: 'high'
+      });
     } catch (err) {
-      bitmap = await loadImageFallback(file);
+      try {
+        // Fallback sem opção de resize caso a GPU do aparelho rejeite
+        bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      } catch (err2) {
+        bitmap = await loadImageFallback(file);
+      }
     }
 
     const { width, height } = bitmap;
@@ -75,7 +77,7 @@
     canvas.height = targetH;
     const ctx = canvas.getContext('2d');
 
-    // Força fundo branco para evitar que PNGs transparentes fiquem com fundo preto.
+    // Fundo branco para evitar transparências pretas
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, targetW, targetH);
     ctx.drawImage(bitmap, 0, 0, targetW, targetH);
@@ -86,10 +88,10 @@
       dataUrl: canvas.toDataURL('image/jpeg', JPEG_QUALITY),
       width: targetW,
       height: targetH,
+      aspectRatio: targetW / targetH
     };
   }
 
-  // Fallback seguro caso o navegador não suporte 'createImageBitmap' de forma nativa.
   function loadImageFallback(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -105,7 +107,7 @@
   }
 
   /* ============================================================
-     CONEXÃO COM OS INPUTS DE ARQUIVOS (TRIGGER INPUT)
+     HANDLERS DE ENTRADA DE ARQUIVOS
      ============================================================ */
   async function handleFiles(fileList) {
     const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
@@ -138,7 +140,7 @@
   });
 
   /* ============================================================
-     GERENCIAMENTO DA GRADE VISUAL (REORDENAÇÃO E EXCLUSÃO)
+     GERENCIAMENTO DA GRADE VISUAL
      ============================================================ */
   function render() {
     const hasPhotos = photos.length > 0;
@@ -180,12 +182,10 @@
       </div>
     `;
 
-    // Ações dos botões nos cards
     card.querySelector('[data-action="remove"]').addEventListener('click', () => removePhoto(index));
     card.querySelector('[data-action="left"]').addEventListener('click', () => movePhoto(index, index - 1));
     card.querySelector('[data-action="right"]').addEventListener('click', () => movePhoto(index, index + 1));
 
-    // Drag-and-drop nativo (desktop)
     card.addEventListener('dragstart', () => {
       dragSrcIndex = index;
       card.classList.add('dragging');
@@ -231,12 +231,10 @@
   }
 
   /* ============================================================
-     GERAÇÃO E COMPILAÇÃO DO DOCUMENTO PDF
-     Cada foto vira uma página individual:
-       - "A4": Mantém proporções em px a 96dpi de impressão.
-       - "Original": Adapta-se estritamente aos pixels da imagem.
+     GERAÇÃO DO DOCUMENTO PDF (PADRONIZADO EM MM PARA EVITAR BUGS DE DPI)
      ============================================================ */
-  const A4_PX = { w: 793.7, h: 1122.5 }; // Equivalência de A4 a 96dpi
+  // A4 padrão universal em milímetros
+  const A4_MM = { w: 210, h: 297 };
 
   function getSelectedValue(name) {
     const el = document.querySelector(`input[name="${name}"]:checked`);
@@ -245,7 +243,7 @@
 
   function computeMargin(pageW, pageH, marginMode) {
     if (marginMode === 'none') return 0;
-    return Math.round(Math.min(pageW, pageH) * 0.035); // Margem sutil proporcional
+    return Math.round(Math.min(pageW, pageH) * 0.04); // Margem proporcional segura em mm
   }
 
   async function generatePdf() {
@@ -257,7 +255,6 @@
     const finalName = rawName.replace(/\.pdf$/i, '') + '.pdf';
 
     setLoading(true, 'preparando páginas');
-    // Força frame de respiro para garantir que a UI mostre o spinner antes de travar no script principal
     await nextFrame();
 
     try {
@@ -268,27 +265,35 @@
         const photo = photos[i];
         setLoading(true, `página ${i + 1} de ${photos.length}`);
 
-        const pageW = pageSizeMode === 'a4' ? A4_PX.w : photo.width;
-        const pageH = pageSizeMode === 'a4' ? A4_PX.h : photo.height;
-        const format = [pageW, pageH];
+        let pageW, pageH;
+
+        if (pageSizeMode === 'a4') {
+          pageW = A4_MM.w;
+          pageH = A4_MM.h;
+        } else {
+          // Modo "Original": converte proporção de pixels da foto para milímetros (escala 0.264583 mm/px)
+          const pxToMm = 0.264583;
+          pageW = photo.width * pxToMm;
+          pageH = photo.height * pxToMm;
+        }
+
+        const orientation = pageW > pageH ? 'landscape' : 'portrait';
 
         if (!pdf) {
           pdf = new jsPDF({
-            unit: 'px',
-            format,
-            orientation: pageW > pageH ? 'landscape' : 'portrait',
-            hotfixes: ['px_scaling']
+            unit: 'mm', // Usa MILÍMETROS por padrão para evitar bugs de resolução em High-DPI
+            format: [pageW, pageH],
+            orientation
           });
         } else {
-          pdf.addPage(format, pageW > pageH ? 'landscape' : 'portrait');
+          pdf.addPage([pageW, pageH], orientation);
         }
 
         const margin = computeMargin(pageW, pageH, marginMode);
         const usableW = Math.max(1, pageW - margin * 2);
         const usableH = Math.max(1, pageH - margin * 2);
 
-        // Calcula proporções exatas de exibição contendo as imagens em áreas úteis centralizadas
-        const imgRatio = photo.width / photo.height;
+        const imgRatio = photo.aspectRatio;
         const boxRatio = usableW / usableH;
         let drawW, drawH;
 
@@ -303,9 +308,9 @@
         const x = margin + (usableW - drawW) / 2;
         const y = margin + (usableH - drawH) / 2;
 
+        // Renderiza a imagem perfeitamente dentro das margens físicas em mm
         pdf.addImage(photo.dataUrl, 'JPEG', x, y, drawW, drawH, undefined, 'MEDIUM');
 
-        // Pausa intercalada de renderização para poupar hardware mobile
         if (i % 2 === 1) await nextFrame();
       }
 
@@ -316,7 +321,7 @@
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
       announce('Não foi possível gerar o PDF. Tente novamente.');
-      alert('Não foi possível gerar o PDF. Tente novamente com menos fotos ou fotos de menor resolução.');
+      alert('Não foi possível gerar o PDF. Tente novamente com menos fotos.');
     } finally {
       setLoading(false);
     }

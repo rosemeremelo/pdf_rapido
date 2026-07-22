@@ -182,3 +182,20 @@ html.dark .page-count-badge {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Adicione no seu style.css */
+#workspace {
+  /* Reserva espaço na parte inferior equivalente à altura do footer + margem de segurança */
+  padding-bottom: 120px !important; 
+}
+
+/* Ajuste na classe do seu footer fixo */
+#footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  /* Garante o padding em iPhones/Androids com barra de gestos */
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
